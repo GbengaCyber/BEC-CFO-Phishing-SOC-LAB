@@ -81,7 +81,7 @@ Containment — account disabled, rules deleted, IOCs blocked, email purged
 
 
 
-## Phase 01 — Environment Setup
+## Phase 01: Environment Setup
 
 The CFO account was provisioned in Microsoft Entra ID as a standard member with no admin roles. Finance staff do not need administrative access — they need the authority to approve payments, which exists in business process rather than in system permissions. Limiting admin roles to those who genuinely require them is a basic identity hygiene control that reduces the blast radius of any compromise.
 
@@ -89,13 +89,17 @@ During setup, an IAM gap was identified that became the root cause of the entire
 
 The result was a C-suite Finance account with no MFA, no device compliance check, and no sign-in risk protection. A stolen password was all an attacker needed to walk in.
 
-![CFO account provisioned in Entra ID — standard member, no admin roles](screenshots/Account_Provision.png)
+---
+<img width="800"  alt="image" src="https://github.com/user-attachments/assets/380fad99-816d-4988-95c8-4f2bba8e6d2c" />
 
-![Eleven active CA policies — CFO account excluded from all of them](screenshots/Excluded_from_CA_policies.png)
+---
+
+<img width="800"  alt="image" src="https://github.com/user-attachments/assets/3a1d00f3-5098-454b-95fb-344454f35047" />
 
 
+---
 
-## Phase 02 — Detection Rules Built Before the Simulation
+## Phase 02: Detection Rules Built Before the Simulation
 
 Five custom detection rules were deployed in Microsoft Sentinel before the phishing campaign launched. In a real security programme, detection rules are built based on known attacker behaviour — not written in response to an incident that already happened. Building rules first and validating them against live telemetry is how a security team knows their detection actually works.
 
@@ -109,27 +113,30 @@ Each rule was mapped to a specific MITRE ATT&CK technique matching a stage of th
 | BEC: Impossible travel detected | T1078 | Sign-ins from geographically impossible locations |
 | BEC: Mass mailbox access for CFO | T1114 | Unusual MailItemsAccessed volume on CFO mailbox |
 
-The IAM sign-in rule fired during the simulation and created Incident 107 in Defender XDR automatically — no analyst had to find it manually.
+The IAM sign-in rule fired during the simulation and created Incident 107 in Defender XDR automatically, no analyst had to find it manually.
 
-![All five custom detection rules active in Sentinel before the simulation ran](screenshots/Detection_Rules.png)
+---
+<img width="800" alt="image" src="https://github.com/user-attachments/assets/6e540fc1-0ed8-4070-9f28-5a3d031ad2a5" />
 
-
-
-## Phase 03 — Attack Delivery
+---
+## Phase 03: Attack Delivery
 
 The phishing email was built to look like a legitimate Microsoft 365 OneDrive notification about a shared document titled Outstanding Invoice. The sender display name read Microsoft 365 Security Team. The actual sending address was security-alert@microsoft-365alerts.com — a domain specifically registered to impersonate Microsoft branding.
 
 This is exactly how real BEC lures work. The display name is trusted. The context is plausible for a CFO. The urgency is embedded in the subject matter. A busy executive reviewing email between meetings is unlikely to hover over the sender address to check the domain.
 
-Outlook flagged the email as coming from a sender not in the Safe senders list — the only visible warning the CFO received. The email was not quarantined or blocked because Attack Simulator uses a tenant whitelist, confirmed by the SCL of -1 found in the raw email headers. In a real attack from the same domain, a DMARC enforcement policy would have prevented delivery entirely.
+Outlook flagged the email as coming from a sender not in the Safe senders list, the only visible warning the CFO received. The email was not quarantined or blocked because Attack Simulator uses a tenant whitelist, confirmed by the SCL of -1 found in the raw email headers. In a real attack from the same domain, a DMARC enforcement policy would have prevented delivery entirely.
 
-![Phishing email landed in CFO inbox from lookalike domain](screenshots/Email_landed_in_inbox.png)
+---
+<img width="800"  alt="image" src="https://github.com/user-attachments/assets/ecd56463-5b46-4c2c-8698-16f88cc3b351" />
 
-![MXToolbox header analysis — SCL -1 confirmed, authentication bypassed by simulator whitelist](screenshots/SPF_dkim_Results.png)
+---
 
+<img width="800" alt="image" src="https://github.com/user-attachments/assets/3a260833-9637-4a25-bf3e-44c1b038a40d" />
 
+---
 
-## Phase 04 — Credential Harvest
+## Phase 04: Credential Harvest
 
 The CFO clicked the link. Attack Simulator recorded the event and displayed the security awareness debrief page. The campaign results confirmed Compromised: Yes for the account. UrlClickEvents in Defender XDR logged the click at 11:43 AM with the full phishing URL.
 
@@ -137,23 +144,32 @@ From the attacker's perspective, this is the moment they have what they need. Th
 
 Phishing-resistant MFA — FIDO2 security keys or Windows Hello for Business — would have made this credential useless to the attacker even after capture. These methods bind authentication to the origin domain, meaning a credential harvested on a fake site cannot be replayed on the real service. Standard MFA methods like SMS or authenticator app push notifications do not provide this protection and can be bypassed by adversary-in-the-middle proxy attacks.
 
-![Attack Simulator debrief page confirming Sarah Mitchell was phished](screenshots/cfo_clicked.png)
+---
 
-![Campaign results — Compromised: Yes, Clicked message link confirmed](screenshots/Campaign_Evidence_-_Compromised.png)
+<img width="800" alt="image" src="https://github.com/user-attachments/assets/c7a49c51-284f-44eb-a834-312010b09ae0" />
 
 
+---
 
-## Phase 05 — User Reports the Email
+<img width="800"  alt="image" src="https://github.com/user-attachments/assets/dd8ef0fe-72c9-448b-82e9-a2eb4955c229" />
+
+
+---
+
+## Phase 05: User Reports the Email
 
 The CFO reported the email as phishing using the built-in Outlook Report button. The report appeared in Defender XDR under the Submissions page with a counter showing Simulations: 1 — Defender correctly identified it as a simulation. In a real incident this would read Threats: 1 and trigger automatic incident correlation.
 
 User reporting is an undervalued detection signal. When an employee reports a phishing email, it tells the security team that the email reached at least one inbox, the user recognised something was wrong, and the email may have reached other recipients who did not report it. A well-configured user submission policy routes these reports directly into the SOC queue for triage.
 
-![Defender XDR Submissions — user reported phishing entry from CFO account](screenshots/Submission.png)
+---
+
+<img width="800"  alt="image" src="https://github.com/user-attachments/assets/79317ea7-c2fa-4396-98dd-1f21ca7b6fb9" />
 
 
+--
 
-## Phase 06 — Incident Triage
+## Phase 06: Incident Triage
 
 Incident 107 was created automatically by the custom IAM detection rule when the attacker first signed in from an unmanaged device. The incident appeared in Defender XDR with High severity, tagged BEC-Lab and CFO-Targeting, and was assigned to the analyst.
 
@@ -161,13 +177,19 @@ This is the NIST 800-61 Detection and Analysis phase in practice. The analyst va
 
 The hypothesis here was clear. A CFO account had signed in from an overseas VPN with no CA policy applied. Combined with the phishing campaign telemetry already visible in Attack Simulator, this was a confirmed credential compromise.
 
-![Incident 107 in Defender XDR — High severity, auto-created by custom detection rule](screenshots/XDR_-Incident_view.png)
+---
 
-![Incident assigned to analyst — tagged and classified](screenshots/Incident_Assigned_-Tagged.png)
+<img width="2098"  alt="image" src="https://github.com/user-attachments/assets/9796f887-fe15-4c0d-82a5-1c461f20baa7" />
 
 
+---
 
-## Phase 07 — Attacker Establishes Persistence
+<img width="800"  alt="image" src="https://github.com/user-attachments/assets/fa7ac8fe-e03c-42b2-a0fc-deb8663e00d8" />
+
+
+---
+
+## Phase 07: Attacker Establishes Persistence
 
 Logged into the CFO account via VPN to simulate the attacker's perspective, three inbox rules were created inside OWA. The rule names were chosen to look innocuous — Sync, Cleanup, Sort — because real attackers name rules to avoid raising suspicion if the account owner happens to check their settings.
 
@@ -175,27 +197,38 @@ The forwarding rule sent every incoming email to an external Gmail address. The 
 
 This is the moment in a real BEC incident where the organisation becomes vulnerable to the actual financial loss. The attacker is now positioned to reply to a vendor invoice thread, change the payment details, and wait for Finance to process the transfer.
 
-![Attacker enabled email forwarding to external Gmail from within OWA](screenshots/Attacker_Enabled_forwarding.png)
+---
 
-![PowerShell Get-InboxRule output confirming all three attacker rules with full configuration visible](screenshots/EMAIL_MAINUPULATION_RULES.png)
+<img width="800" alt="image" src="https://github.com/user-attachments/assets/59f3e3df-ec6b-4e10-972b-5899b377b83a" />
 
 
+---
 
-## Phase 08 — Threat Hunting with KQL
+<img width="800"  alt="image" src="https://github.com/user-attachments/assets/4fdfe87a-ab0c-479d-8a2d-515ad023aad9" />
+
+
+---
+
+## Phase 08: Threat Hunting with KQL
 
 Four data tables were queried across Defender XDR and Microsoft Sentinel to build the complete attacker timeline and confirm the persistence activity with two independent data sources.
 
-SigninLogs in Sentinel showed two successful authentications for the CFO account. The first came from a Canadian IPv6 address matching the victim's legitimate device. The second came from 62.197.152.196 in Andorra — the attacker's VPN exit node. The ConditionalAccessStatus field for the second login showed notApplied, confirming no policy intercepted the authentication.
+SigninLogs in Sentinel showed two successful authentications for the CFO account. The first came from a Canadian IPv6 address matching the victim's legitimate device. The second came from 62.197.152.XXX in Andorra, the attacker's VPN exit node. The ConditionalAccessStatus field for the second login showed notApplied, confirming no policy intercepted the authentication.
 
-OfficeActivity confirmed three New-InboxRule operations from IP 62.197.152.180 within a six-minute window, along with a MailItemsAccessed operation showing the attacker read through the mailbox before creating the rules. CloudAppEvents recorded the same inbox rule events from the same IP independently. Two separate log sources confirming the same attacker action from the same foreign IP is the kind of evidence that holds up in an incident report and leaves no room for doubt.
+OfficeActivity confirmed three New-InboxRule operations from IP 62.197.152.XXX within a six-minute window, along with a MailItemsAccessed operation showing the attacker read through the mailbox before creating the rules. CloudAppEvents recorded the same inbox rule events from the same IP independently. Two separate log sources confirming the same attacker action from the same foreign IP is the kind of evidence that holds up in an incident report and leaves no room for doubt.
 
-![SigninLogs — two sign-ins for CFO, second from Andorra VPN with ConditionalAccess notApplied](screenshots/Attacker_Sign_in_-__KQL.png)
+---
 
-![OfficeActivity — New-InboxRule and MailItemsAccessed from attacker IP 62.197.152.180](screenshots/Office_Activity.png)
+<img width="800"  alt="image" src="https://github.com/user-attachments/assets/ff0af282-5e12-4f51-9427-660bdd6d03bd" />
+
+---
+
+<img width="800"  alt="image" src="https://github.com/user-attachments/assets/ca97557b-b1db-4d05-a3ca-e1eef1cc4aa8" />
 
 
+---
 
-## Phase 09 — Containment and Eradication
+## Phase 09: Containment and Eradication
 
 Containment followed a deliberate sequence. The account was disabled first to immediately cut the attacker's access. Sessions were revoked next to invalidate any access tokens the attacker was holding in an active browser session. Only then were the cleanup actions completed — password reset, inbox rule removal, forwarding disabled, email purged, IOCs blocked.
 
@@ -203,23 +236,37 @@ The sequence matters because an attacker with an active session can continue ope
 
 The phishing email was permanently removed from the mailbox via hard delete in Defender XDR, confirmed with Approval ID 97983e in the action center audit trail. The sender address and both attacker-controlled domains were added to the Tenant Allow/Block List to prevent future delivery to any mailbox in the organisation.
 
-![CFO account disabled in Entra ID — attacker access cut immediately](screenshots/Account_Disabled.png)
-
-![OWA Rules page empty — all three attacker inbox rules removed](screenshots/Rules_Deleted.png)
-
-![Tenant Allow/Block List — phishing domains blocked at tenant level](screenshots/IOCS_BLOCKED.png)
-
-![Phishing email hard deleted from CFO mailbox — action logged in audit trail](screenshots/Harddelete_email.png)
+---
+<img width="894"  alt="image" src="https://github.com/user-attachments/assets/65e10c90-30f0-4500-b961-799182a7d571" />
 
 
+---
 
-## Phase 10 — Incident Closure
+<img width="800"  alt="image" src="https://github.com/user-attachments/assets/dc0e1fdc-a5cb-48ab-9929-02b64480efee" />
+
+
+---
+
+<img width="956"  alt="image" src="https://github.com/user-attachments/assets/2af4a359-2884-4751-9f0d-2afa555c20bd" />
+
+---
+<img width="800"  alt="image" src="https://github.com/user-attachments/assets/b282e000-8548-48ac-9e9d-ef0d579b1662" />
+
+
+----
+
+
+
+## Phase 10: Incident Closure
 
 Incident 107 was closed as True Positive — Phishing with all containment actions documented in the closure notes. The Conditional Access gap was escalated separately to the IAM team as a priority finding, with a recommendation to audit all C-suite and Finance accounts for CA policy scope and enforce phishing-resistant MFA as the authentication standard for those accounts.
 
-![Incident 107 resolved — True Positive, Phishing, all actions completed](screenshots/Incident_Closed.png)
+---
+
+<img width="2108" height="1282" alt="image" src="https://github.com/user-attachments/assets/095e7d87-f332-407f-a9e9-537e67ea24b5" />
 
 
+---
 
 ## What Would Have Stopped This Attack
 
