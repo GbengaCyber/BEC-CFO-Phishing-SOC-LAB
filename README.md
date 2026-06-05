@@ -2,22 +2,21 @@
 
 ## Why This Project Exists
 
-Business Email Compromise is the most financially damaging cybercrime category in the world. The FBI Internet Crime Complaint Center reported over 2.9 billion dollars in BEC losses in 2023 alone,  more than ransomware, more than data theft, more than any other category of cybercrime. The attacks are not technically sophisticated. They do not require malware or zero-day exploits. They exploit trust, urgency, and the fact that Finance teams process payment requests under time pressure every single day.
-
-The typical attack looks like this. A CFO or Finance employee receives an email that appears to come from a trusted source,  a vendor, a Microsoft service, or even their own CEO. The email contains a link or a request. The employee acts on it. By the time anyone realises something is wrong, a wire transfer has left the organisation and landed in an account the attacker controls.
-
-This project simulates that exact scenario inside a controlled Microsoft 365 E5 environment and documents the full SOC investigation, from the moment the phishing email landed in the CFO inbox to the moment the attacker's foothold was removed and the incident was closed.
+Business Email Compromise cost organisations over 2.9 billion dollars in 2023 according to the FBI IC3, more than ransomware and more than any other cybercrime category. The attacks require no malware and no technical sophistication. They exploit trust, urgency, and the fact that Finance teams process payment requests under pressure every single day.
+A CFO receives an email that looks like it came from a vendor or a Microsoft service. She clicks a link. By the time anyone realises something is wrong, a wire transfer has left the organisation and landed in an account the attacker controls. Recovery is rare.
+This project simulates that exact scenario inside a Microsoft 365 E5 tenant and documents the full SOC investigation from the moment the phishing email landed in the CFO inbox to the moment the attacker's foothold was removed and the incident was closed.
 
 
 
 ## The Financial Reality of BEC
 
-A Finance employee processes dozens of payment requests, invoice approvals, and vendor communications every week. BEC attackers study this. They time their attacks to coincide with month-end close, acquisition activity, or periods when the CFO is travelling. They craft emails that match the tone and format of legitimate business correspondence. The ask is always plausible, a vendor changed their bank account details, an urgent wire transfer needs same-day approval, a shared document needs sign-off before a deal closes.
+BEC works because it looks like normal business. Attackers time campaigns around month end close or periods when the CFO is travelling. The request is always plausible, a vendor updated their bank details, an invoice needs same day approval, a document needs sign off before a deal closes. No malware is involved. The employee simply responds to what looks like routine correspondence and the money is gone before anyone realises.
+Three controls stop most BEC attacks before they cause damage. Phishing-resistant MFA makes stolen credentials useless even after a successful phish. DMARC enforcement blocks lookalike domain emails before they reach the inbox. Payment verification procedures,  a call to a known number before changing any payment details, break the final step even when everything else fails.
 
-What makes this so damaging is that no technical control on the victim's device is involved. The employee does not execute a file. They do not install software. They simply respond to what looks like a normal business request. By the time the Finance team realises the vendor's bank details were fraudulent, the payment is gone.
+## The Scenario
 
-The three controls that stop most BEC attacks before they start are not complicated. Multi-factor authentication prevents an attacker from using stolen credentials even if a phishing link is clicked. Email authentication enforcement via DMARC prevents lookalike domains from reaching the inbox in the first place. Payment verification procedures, a phone call to a known number before processing any change to payment details, stop the fraud even when the email reaches the employee. 
-
+The CFO of Eagle Secure IT received what looked like a Microsoft OneDrive notification about an outstanding invoice. She clicked the link, her credentials were harvested, and within hours an attacker logged in from an overseas VPN and set up inbox rules to forward all her mail externally, delete security alerts, and hide payment conversations in a folder they could monitor silently.
+The SOC caught it through a custom Sentinel detection rule that fired on the anomalous sign-in. The investigation that followed used KQL across four data tables to confirm the full attack chain and complete containment the same day.
 
 
 ## Environment
@@ -73,11 +72,8 @@ Containment : account disabled, rules deleted, IOCs blocked, email purged
 
 ## Phase 01: Environment Setup
 
-The CFO account was provisioned in Microsoft Entra ID as a standard member with no admin roles. Finance staff do not need administrative access, they need the authority to approve payments, which exists in business process rather than in system permissions. Limiting admin roles to those who genuinely require them is a basic identity hygiene control that reduces the blast radius of any compromise.
-
-During setup, an IAM gap was identified that became the root cause of the entire incident. Despite eleven active Conditional Access policies, including a strong MFA requirement, a sign-in risk block, and a compliant device requirement, the CFO account was not in scope for any of them. This is a common failure pattern in enterprise environments. CA policies are often rolled out incrementally, and exclusions that were meant to be temporary become permanent as organisations move on to other priorities.
-
-The result was a C-suite Finance account with no MFA, no device compliance check, and no sign-in risk protection. A stolen password was all an attacker needed to walk in.
+The CFO account was created in Microsoft Entra ID as a standard member with no admin roles. Finance staff need payment authority, not system permissions. Keeping admin roles limited to those who genuinely require them reduces the blast radius of any compromise.
+During setup an IAM gap was discovered that became the root cause of the entire incident. The tenant had eleven active Conditional Access policies including MFA, sign-in risk block, and compliant device requirements. The CFO account was excluded from all of them. CA exclusions that start as temporary workarounds have a way of becoming permanent. The result was a C-suite Finance account a stolen password was all an attacker needed to access.
 
 ---
 <img width="800"  alt="image" src="https://github.com/user-attachments/assets/380fad99-816d-4988-95c8-4f2bba8e6d2c" />
@@ -201,11 +197,9 @@ This is the moment in a real BEC incident where the organisation becomes vulnera
 
 ## Phase 08: Threat Hunting with KQL
 
-Four data tables were queried across Defender XDR and Microsoft Sentinel to build the complete attacker timeline and confirm the persistence activity with two independent data sources.
-
-SigninLogs in Sentinel showed two successful authentications for the CFO account. The first came from a Canadian IPv6 address matching the victim's legitimate device. The second came from 62.197.152.XXX in Andorra, the attacker's VPN exit node. The ConditionalAccessStatus field for the second login showed notApplied, confirming no policy intercepted the authentication.
-
-OfficeActivity confirmed three New-InboxRule operations from IP 62.197.152.XXX within a six minute window, along with a MailItemsAccessed operation showing the attacker read through the mailbox before creating the rules. CloudAppEvents recorded the same inbox rule events from the same IP independently. Two separate log sources confirming the same attacker action from the same foreign IP is the kind of evidence that holds up in an incident report and leaves no room for doubt.
+Four data tables were queried across Defender XDR and Sentinel to build the complete attacker timeline.
+SigninLogs showed two successful logins for the CFO account. The first was from a Canadian IPv6 address matching her legitimate device. The second was from Andorra, the attacker's VPN exit node, with ConditionalAccessStatus showing notApplied confirming no policy challenged the login.
+OfficeActivity confirmed three New-InboxRule operations from the attacker IP within six minutes, plus a MailItemsAccessed entry showing the attacker read through the mailbox before setting the rules. CloudAppEvents recorded the same events independently. Two separate data sources confirming the same action from the same foreign IP leaves no room for doubt in the incident record
 
 ---
 
@@ -220,11 +214,8 @@ OfficeActivity confirmed three New-InboxRule operations from IP 62.197.152.XXX w
 
 ## Phase 09: Containment and Eradication
 
-Containment followed a deliberate sequence. The account was disabled first to immediately cut the attacker's access. Sessions were revoked next to invalidate any access tokens the attacker was holding in an active browser session. Only then were the cleanup actions completed,  password reset, inbox rule removal, forwarding disabled, email purged, IOCs blocked.
-
-The sequence matters because an attacker with an active session can continue operating in the mailbox even after a password reset if the session tokens are not separately revoked. And inbox rules persist independently of credentials, a password reset does not remove them. An attacker who retains working inbox rules continues to receive forwarded emails even after losing the ability to authenticate directly.
-
-The phishing email was permanently removed from the mailbox via hard delete in Defender XDR, confirmed with Approval ID 97983e in the action center audit trail. The sender address and both attacker-controlled domains were added to the Tenant Allow/Block List to prevent future delivery to any mailbox in the organisation.
+Containment followed a deliberate sequence. The account was disabled first, sessions were revoked second, and cleanup followed. The order matters because an attacker holding an active session token can keep operating in the mailbox even after a password reset. Inbox rules also persist independently of credentials, so resetting the password without removing the rules leaves the forwarding active.
+All three inbox rules were deleted and forwarding was disabled. The phishing email was hard deleted from the mailbox with Approval ID 97983e logged in the action center. The sender address and both attacker domains were added to the Tenant Allow/Block List to block future delivery across the entire organisation.
 
 ---
 <img width="894"  alt="image" src="https://github.com/user-attachments/assets/65e10c90-30f0-4500-b961-799182a7d571" />
@@ -274,13 +265,11 @@ Incident 107 was closed as True Positive Phishing with all containment actions d
 
 ## Lessons Learned
 
-The CFO account had no MFA, no device compliance requirement, and no sign-in risk policy. Eleven CA policies were active in the tenant and none of them covered this account. Any account with payment authority or access to financial systems should be treated as highest priority for identity protection controls.
+The CFO account had no MFA, no device compliance check, and no sign-in risk policy despite eleven active CA policies in the tenant. Any account with payment authority should be the first priority for identity protection, not an afterthought during policy rollout.
+DMARC was in monitoring mode. Moving from p=none to p=reject takes less than an hour and permanently blocks an entire class of lookalike domain attacks.
 
-The DMARC policy for the tenant was in monitoring mode. A lookalike domain email reached the inbox without any challenge. The move from p=none to p=reject is a configuration change that takes less than an hour and eliminates an entire class of spoofing attacks permanently.
-
-Inbox rules created during a compromise survive password resets. Any BEC response that stops at credential remediation without auditing mailbox configuration leaves the attacker's most valuable persistence mechanism intact. The three rules in this incident would have continued forwarding financial emails to the attacker's Gmail for days or weeks after the password was changed, until someone noticed.
-
-Detection rules built before an attack and validated against live telemetry are meaningfully more reliable than rules written in response to an incident. The IAM sign-in rule in this project fired and created the incident automatically. The analyst did not find the compromise, the detection engineering found it.
+Inbox rules survive password resets. A BEC response that stops at credential remediation leaves the attacker's forwarding rules running silently for days or weeks until someone notices the mail is going somewhere it should not.
+Detection rules built before an attack and validated against real telemetry are far more reliable than rules written after the fact. The custom IAM sign-in rule created the incident automatically. The analyst did not find the compromise. The detection engineering did.
 
 
 
